@@ -6,7 +6,7 @@ SwiftUI iPhone/iPad development client for NaiLu, with AnyTLS v2 over standard T
 
 ## Verified cloud build
 
-[Run 41117099859 succeeded](https://github.com/6664782-sys/nailu-ios/actions/runs/41117099859) on 2026-10-31, using a standard macOS 26 runner, Xcode 26.6 and iOS SDK 26.5.
+[Run 41119432628 succeeded](https://github.com/6664782-sys/nailu-ios/actions/runs/41119432628) on 2026-10-31, using a standard macOS 26 runner, Xcode 26.6 and iOS SDK 26.5.
 
 - Go race tests and independent AnyTLS reference-server TCP/UDP interoperability passed.
 - Four shared Swift tests passed.
@@ -20,3 +20,4 @@ Artifacts contain an **unsigned development IPA**, a simulator app, a screenshot
 The project still requires signed physical-device testing, account deletion, final privacy and binary/license review. In particular, Xray's MPL-2.0 top-level license does not resolve the licensing of its GPL-3.0-or-later `sing` and `sing-shadowsocks` dependencies. Those dependencies are used by the engine, not just by the separate reference test server. Applicable permissions and compatibility must be resolved, or the dependencies replaced, before selecting a distribution plan. Public source and a successful development build do not establish App Store distribution readiness.
 
 See [third-party notices](THIRD_PARTY_NOTICES.md) and the bundled license inventory. No production credentials, customer data or signing materials are included.
+
