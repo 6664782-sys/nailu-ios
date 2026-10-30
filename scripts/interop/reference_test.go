@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
+	"errors"
 	xnet "github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/outbound"
@@ -17,6 +18,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -75,7 +77,10 @@ func TestNailuReferenceInterop(t *testing.T) {
 			if e != nil {
 				return
 			}
-			udpEcho.WriteTo(b[:n], a)
+			if _, e := udpEcho.WriteTo(b[:n], a); e != nil {
+				t.Errorf("UDP fixture echo: %v", e)
+				return
+			}
 		}
 	}()
 	client, e := nailu.New(listener.Addr().String(), "local-fixture", "127.0.0.1", &tls.Config{RootCAs: roots})
@@ -119,7 +124,32 @@ func TestNailuReferenceInterop(t *testing.T) {
 	defer stop()
 	_, udpPort, _ := net.SplitHostPort(udpEcho.LocalAddr().String())
 	port, _ = strconv.Atoi(udpPort)
-	for _, payload := range [][]byte{[]byte("DNS-style datagram"), bytes.Repeat([]byte{1, 2, 3, 4}, 3000)} {
+	baseline, e := net.Dial("udp", udpEcho.LocalAddr().String())
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer baseline.Close()
+	for _, payload := range [][]byte{[]byte("DNS-style datagram"), bytes.Repeat([]byte{1, 2, 3, 4}, 300), bytes.Repeat([]byte{1, 2, 3, 4}, 2048), bytes.Repeat([]byte{1, 2, 3, 4}, 3000)} {
+		// macOS limits outgoing UDP datagrams independently of the tunnel.
+		// Require the 18, 1200 and 8192-byte cases everywhere; test 12000
+		// only when the direct loopback socket accepts it. Transport errors
+		// after a successful baseline always fail the interoperability test.
+		if e = baseline.SetDeadline(time.Now().Add(2 * time.Second)); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = baseline.Write(payload); e != nil {
+			if len(payload) > 8192 && errors.Is(e, syscall.EMSGSIZE) {
+				t.Logf("host UDP limit rejects %d bytes before tunneling: %v", len(payload), e)
+				continue
+			}
+			t.Fatalf("direct UDP baseline (%d bytes): %v", len(payload), e)
+		}
+		direct := make([]byte, len(payload)+1)
+		n, e := baseline.Read(direct)
+		if e != nil || !bytes.Equal(direct[:n], payload) {
+			t.Fatalf("direct UDP baseline echo (%d bytes): %v", len(payload), e)
+		}
+		t.Logf("testing UOT v2 datagram: %d bytes", len(payload))
 		address, _ := nailu.Address("127.0.0.1", uint16(port), true)
 		packet := binary.BigEndian.AppendUint16(address, uint16(len(payload)))
 		packet = append(packet, payload...)
@@ -128,7 +158,7 @@ func TestNailuReferenceInterop(t *testing.T) {
 		}
 		host, returnedPort, e := nailu.ReadAddress(u, true)
 		if e != nil {
-			t.Fatal(e)
+			t.Fatalf("UOT response address (%d-byte payload): %v", len(payload), e)
 		}
 		if host != "127.0.0.1" || returnedPort != uint16(port) {
 			t.Fatal("UDP endpoint mismatch")
