@@ -44,6 +44,7 @@ targets:
         SWIFT_OBJC_BRIDGING_HEADER: Platform/EngineAPI.h
     dependencies:
       - target: PacketTunnel
+      - sdk: libresolv.tbd
       - framework: Frameworks/NailuEngine.xcframework
         embed: false
   PacketTunnel:
@@ -73,6 +74,7 @@ targets:
         LIBRARY_SEARCH_PATHS: ['$(inherited)', '$(PROJECT_DIR)/Frameworks/Hev/$(PLATFORM_NAME)']
     dependencies:
       - framework: NetworkExtension.framework
+      - sdk: libresolv.tbd
       - framework: Frameworks/NailuEngine.xcframework
         embed: false
   NaiLuTests:
