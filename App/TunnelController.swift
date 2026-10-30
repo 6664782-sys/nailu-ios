@@ -18,11 +18,18 @@ final class TunnelController: ObservableObject {
         switch status { case .connected: return "已连接"; case .connecting, .reasserting: return "连接中"; case .disconnecting: return "断开中"; default: return "未连接" }
     }
     func load() async {
+        #if targetEnvironment(simulator)
+        // Simulator builds exercise account/UI flows without VPN provisioning.
+        // Loading device-only VPN preferences would show an unrelated alert.
+        status = .disconnected
+        return
+        #else
         do {
             let managers = try await NETunnelProviderManager.loadAllFromPreferences()
             manager = managers.first { ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == Bundle.main.object(forInfoDictionaryKey: "PacketTunnelBundleID") as? String }
             observe()
         } catch { self.error = error.localizedDescription }
+        #endif
     }
     func connect(node: Node, subscription: Subscription) async {
         #if targetEnvironment(simulator)
