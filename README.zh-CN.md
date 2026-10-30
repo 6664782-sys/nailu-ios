@@ -17,12 +17,16 @@
 
 在 Windows 上已执行 Go 单元测试、真实 Xray 本地启动测试，以及与固定版本 AnyTLS 参考服务端的加密互通测试（TCP、UDP、会话复用和完整 Xray 出站链路），并核对现有公开注册配置及条款、隐私页面。没有使用真实客户凭据，也没有修改生产服务。
 
-**尚未执行 Xcode 构建、Swift 单元测试、iPhone 真机 VPN 测试或 App Store 提交。此目录是开发源代码，不是可安装 IPA，也不是已验收成品。** Mac 构建脚本提供完整构建步骤，但首次在 Mac 运行时仍可能需要解决平台编译问题。
+2026-10-31 已在标准云端 Mac 上使用 **Xcode 26.6 / iOS SDK 26.5** 完成构建：[成功任务 41117099859](https://github.com/6664782-sys/nailu-ios/actions/runs/41117099859)。Go race 测试、AnyTLS 参考互通、4 项共享 Swift 测试、模拟器 App 构建和未签名 iPhone 归档均通过；模拟器已安装并启动 App，生成真实登录页截图。任务产物包含未签名 IPA、模拟器 App、截图、校验值与日志。
+
+**尚未进行 iPhone 真机 VPN 测试、Apple 签名、TestFlight 或 App Store 提交。未签名 IPA 不能直接安装到 iPhone，此工程不是已验收的上架成品。** 模拟器启动不等于真实账户登录、注册或 VPN 流量已通过验收。
+
+发行前还必须解决第三方依赖许可问题：Xray 顶层为 MPL-2.0，但其实际导入的 `github.com/sagernet/sing` 与 `sing-shadowsocks` 根许可为 GPL-3.0-or-later；完整原文已收录。不能只凭顶层 MPL 声明认定整个 App 可闭源或适合 App Store 分发。必须核实适用授权及兼容性，或替换相应依赖，再决定发行方案。公开源码本身不代表这项审核已完成。
 
 ## 在 Mac 上构建
 
 
-需要完整 Xcode、iOS SDK、Go 1.27.1 或更新兼容版本、Git、Make 和 XcodeGen。先在 Xcode 完成首次启动和 SDK 下载。使用 Homebrew 时可安装 `go` 与 `xcodegen`，无需 Apple 账号即可先编译模拟器。
+需要完整 Xcode、iOS SDK、Go 1.27.1 或更新兼容版本、Git、Make 和 XcodeGen。当前云端使用标准 `macos-26`，检查 Xcode 主版本至少为 26，以满足当前 App Store 最低 SDK 要求。先在 Xcode 完成首次启动和 SDK 下载。使用 Homebrew 时可安装 `go` 与 `xcodegen`，无需 Apple 账号即可先编译模拟器。
 
 ```sh
 cd nailu-ios
@@ -34,7 +38,7 @@ open NaiLu.xcodeproj
 
 原生 VPN 扩展需要在 iPhone 真机验证，模拟器编译成功不能证明实际 VPN 可用。在 Xcode 为 NaiLu、PacketTunnel 两个 target 选择同一开发团队；账号申请后按实际团队确认 App ID、Network Extension 和共享钥匙串授权。项目默认 Bundle ID 为 `pro.nailu.ios` / `pro.nailu.ios.PacketTunnel`；更改时须同步共享组、Info 字段与 KeychainStore 校验。
 
-模拟器使用独立普通钥匙串，方便尚无开发者团队时调试账户和页面；点击连接会明确提示需要真机。真实设备始终使用签名授权的共享钥匙串，不采用此模拟器分支。
+未签名模拟器仅在本次运行的内存中保存调试凭据，重启后需要重新登录，不写入普通文件或 UserDefaults；点击连接会明确提示需要真机。真实设备始终使用签名授权的共享钥匙串，不采用此模拟器分支。
 
 ## 首版的边界
 
@@ -78,3 +82,4 @@ bash scripts/test-anytls-interop.sh
 - Mac 编译、iPhone 真机测试、签名归档、TestFlight 验收通过后，再提交 App Store。
 
 官方参考：[审核指南 5.4 VPN Apps](https://developer.apple.com/app-store/review/guidelines/#vpn-apps)、[Packet Tunnel Provider](https://developer.apple.com/documentation/networkextension/nepackettunnelprovider)、[隐私清单](https://developer.apple.com/documentation/bundleresources/privacy-manifest-files)。
+
