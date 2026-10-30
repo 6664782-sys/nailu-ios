@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   ios:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     defaults:
       run:
@@ -28,6 +28,9 @@ jobs:
       - name: Prepare Xcode and XcodeGen
         run: |
           xcodebuild -version
+          XCODE_MAJOR=$(xcodebuild -version | awk '/^Xcode / {split($2,v,"."); print v[1]}')
+          test "$XCODE_MAJOR" -ge 26
+          xcrun --sdk iphoneos --show-sdk-version
           command -v xcodegen >/dev/null || brew install xcodegen
       - name: Race tests and AnyTLS reference interoperability
         run: |
