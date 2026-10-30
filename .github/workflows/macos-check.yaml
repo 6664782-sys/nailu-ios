@@ -1,0 +1,17 @@
+name: NaiLu iOS build environment check
+on:
+  push:
+    paths: ['.github/workflows/macos-check.yaml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 5
+    steps:
+      - name: Verify Apple build environment
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
