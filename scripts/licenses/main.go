@@ -104,7 +104,7 @@ func main() {
 		fmt.Fprintf(&out, "\nREQUIRES MANUAL LICENSE REVIEW (no root license found):\n%s\n", strings.Join(missing, "\n"))
 	}
 	must(os.WriteFile(filepath.Join(root, "Resources", "ThirdPartyLicenses.txt"), []byte(out.String()), 0644))
-	fmt.Printf("License inventory generated; %d entries require manual review.\n", len(missing))
+	fmt.Printf("License inventory generated; %d module roots have missing license files. License compatibility is not assessed by this inventory.\n", len(missing))
 }
 func licenseName(name string) bool {
 	n := strings.ToUpper(name)
