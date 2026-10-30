@@ -17,7 +17,7 @@
 
 在 Windows 上已执行 Go 单元测试、真实 Xray 本地启动测试，以及与固定版本 AnyTLS 参考服务端的加密互通测试（TCP、UDP、会话复用和完整 Xray 出站链路），并核对现有公开注册配置及条款、隐私页面。没有使用真实客户凭据，也没有修改生产服务。
 
-2026-10-31 已在标准云端 Mac 上使用 **Xcode 26.6 / iOS SDK 26.5** 完成构建：[成功任务 41119432628](https://github.com/6664782-sys/nailu-ios/actions/runs/41119432628)。Go race 测试、AnyTLS 参考互通、4 项共享 Swift 测试、模拟器 App 构建和未签名 iPhone 归档均通过；模拟器已安装并启动 App，生成真实登录页截图。任务产物包含未签名 IPA、模拟器 App、截图、校验值与日志。
+2026-10-31 已在标准云端 Mac 上使用 **Xcode 26.6 / iOS SDK 26.5** 完成构建：[已通过的 iOS 构建任务](https://github.com/6664782-sys/nailu-ios/actions/runs/41119432628/job/124282059082)。Go race 测试、AnyTLS 参考互通、4 项共享 Swift 测试、模拟器 App 构建和未签名 iPhone 归档均通过；模拟器已安装并启动 App，生成真实登录页截图。任务产物包含未签名 IPA、模拟器 App、截图、校验值与日志。
 
 **尚未进行 iPhone 真机 VPN 测试、Apple 签名、TestFlight 或 App Store 提交。未签名 IPA 不能直接安装到 iPhone，此工程不是已验收的上架成品。** 模拟器启动不等于真实账户登录、注册或 VPN 流量已通过验收。
 
@@ -82,5 +82,6 @@ bash scripts/test-anytls-interop.sh
 - Mac 编译、iPhone 真机测试、签名归档、TestFlight 验收通过后，再提交 App Store。
 
 官方参考：[审核指南 5.4 VPN Apps](https://developer.apple.com/app-store/review/guidelines/#vpn-apps)、[Packet Tunnel Provider](https://developer.apple.com/documentation/networkextension/nepackettunnelprovider)、[隐私清单](https://developer.apple.com/documentation/bundleresources/privacy-manifest-files)。
+
 
 
