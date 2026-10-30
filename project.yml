@@ -1,0 +1,90 @@
+name: NaiLu
+options:
+  bundleIdPrefix: pro.nailu
+  deploymentTarget:
+    iOS: '16.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.2.0
+    TARGETED_DEVICE_FAMILY: '1,2'
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ''
+targets:
+  NaiLu:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared/Sources
+      - Platform
+      - path: Resources
+        buildPhase: resources
+    info:
+      path: Config/App-Info.plist
+      properties:
+        CFBundleDisplayName: 奈鹿 NaiLu
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiredDeviceCapabilities: [arm64]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        KeychainAccessGroup: $(AppIdentifierPrefix)pro.nailu.ios.shared
+        PacketTunnelBundleID: pro.nailu.ios.PacketTunnel
+    entitlements:
+      path: Config/App.entitlements
+      properties:
+        com.apple.developer.networking.networkextension: [packet-tunnel-provider]
+        keychain-access-groups: [$(AppIdentifierPrefix)pro.nailu.ios.shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pro.nailu.ios
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_OBJC_BRIDGING_HEADER: Platform/EngineAPI.h
+    dependencies:
+      - target: PacketTunnel
+      - framework: Frameworks/NailuEngine.xcframework
+        embed: false
+  PacketTunnel:
+    type: app-extension
+    platform: iOS
+    sources: [PacketTunnel, Shared/Sources, Platform]
+    info:
+      path: Config/Tunnel-Info.plist
+      properties:
+        CFBundleDisplayName: 奈鹿连接
+        KeychainAccessGroup: $(AppIdentifierPrefix)pro.nailu.ios.shared
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    entitlements:
+      path: Config/Tunnel.entitlements
+      properties:
+        com.apple.developer.networking.networkextension: [packet-tunnel-provider]
+        keychain-access-groups: [$(AppIdentifierPrefix)pro.nailu.ios.shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pro.nailu.ios.PacketTunnel
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        SWIFT_OBJC_BRIDGING_HEADER: PacketTunnel/NaiLuTunnel-Bridging-Header.h
+        OTHER_LDFLAGS: ['$(inherited)', '-lhev-socks5-tunnel', '-lyaml', '-llwip', '-lhev-task-system']
+        LIBRARY_SEARCH_PATHS: ['$(inherited)', '$(PROJECT_DIR)/Frameworks/Hev/$(PLATFORM_NAME)']
+    dependencies:
+      - framework: NetworkExtension.framework
+      - framework: Frameworks/NailuEngine.xcframework
+        embed: false
+  NaiLuTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: NaiLu
+schemes:
+  NaiLu:
+    build:
+      targets:
+        NaiLu: all
+    test:
+      targets: [NaiLuTests]

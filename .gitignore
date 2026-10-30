@@ -1,0 +1,12 @@
+.build/
+Frameworks/
+NaiLu.xcodeproj/
+Config/*Info.plist
+Config/*.entitlements
+Shared/.build/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+*.p12
+*.mobileprovision
+*.ipa

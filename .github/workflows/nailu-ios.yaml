@@ -1,0 +1,69 @@
+name: NaiLu native iOS
+on:
+  push:
+    branches: [main]
+
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nailu-ios-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: .
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.1'
+          cache: false
+      - name: Prepare Xcode and XcodeGen
+        run: |
+          xcodebuild -version
+          command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Race tests and AnyTLS reference interoperability
+        run: |
+          (cd Engine && go test -race -timeout 90s ./...)
+          bash scripts/test-anytls-interop.sh
+      - name: Build engine, packet bridge and simulator app
+        run: bash scripts/build-macos.sh 2>&1 | tee build.log
+      - name: Archive unsigned iPhone build
+        run: |
+          mkdir -p dist
+          xcodebuild -project NaiLu.xcodeproj -scheme NaiLu -configuration Release -destination 'generic/platform=iOS' -archivePath dist/NaiLu.xcarchive -derivedDataPath .build/Device CODE_SIGNING_ALLOWED=NO archive 2>&1 | tee archive.log
+          mkdir -p dist/Payload
+          ditto dist/NaiLu.xcarchive/Products/Applications/NaiLu.app dist/Payload/NaiLu.app
+          (cd dist && zip -qry NaiLu-0.2.0-iOS-unsigned.ipa Payload)
+          ditto -c -k --keepParent .build/DerivedData/Build/Products/Debug-iphonesimulator/NaiLu.app dist/NaiLu-0.2.0-Simulator.zip
+          echo 'Unsigned development build. Cannot install on an iPhone without appropriate Apple signing and Network Extension provisioning.' > dist/READ-ME-FIRST.txt
+          shasum -a 256 dist/*.ipa dist/*.zip > dist/SHA256SUMS.txt
+      - name: Capture real simulator login screen
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for group in d["devices"].values() for v in group if v.get("isAvailable") and "iPhone" in v["name"]))')
+          if ! xcrun simctl list devices | grep "$DEVICE" | grep -q Booted; then xcrun simctl boot "$DEVICE"; fi
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" .build/DerivedData/Build/Products/Debug-iphonesimulator/NaiLu.app
+          xcrun simctl launch "$DEVICE" pro.nailu.ios
+          sleep 5
+          xcrun simctl io "$DEVICE" screenshot dist/NaiLu-login.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: NaiLu-iOS-development-${{ github.run_number }}
+          retention-days: 1
+          if-no-files-found: warn
+          path: |
+            dist/*.ipa
+            dist/*.zip
+            dist/*.png
+            dist/*.txt
+            build.log
+            archive.log
