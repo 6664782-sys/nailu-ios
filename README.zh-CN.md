@@ -17,13 +17,15 @@
 
 本分支替换了旧版 Xray 核心，采用独立 AnyTLS 客户端与有连接数量、握手和空闲超时限制的 SOCKS5 桥接。TCP 与 UDP 均经 AnyTLS 转发，不通过桥接直连目标域名。
 
-新实现已通过本地 Go 单元测试、vet、SOCKS TCP/UDP 收发、关闭、非法请求与 UDP 来源限制测试，以及与固定版本独立 AnyTLS 参考服务端的加密互通。**本分支的云端 race 测试、iOS 编译及模拟器启动尚待验证。**
+新实现已通过本地 Go 单元测试、vet、SOCKS TCP/UDP 收发、关闭、非法请求与 UDP 来源限制测试，以及与固定版本独立 AnyTLS 参考服务端的加密互通。2026-10-31 [云端构建 #6 全部通过](https://github.com/6664782-sys/nailu-ios/actions/runs/41163645570)：Xcode 26.6 / iOS SDK 26.5，Go race、参考服务端 TCP/UDP 互通、4 项共享 Swift 测试、模拟器构建、未签名 iPhone 归档及实际模拟器启动截图均通过。公开分支源码与本地 45 个文件逐个核对一致，另完成 20 轮 SOCKS 桥接测试。
+
+下载后已核对整个产物和内部 IPA / 模拟器包的 SHA-256，以及 App 和扩展的 arm64 iOS 可执行文件。两份可执行文件的 Go 模块信息仅包含 `golang.org/x/mobile` 与本工程引擎，未检出旧 Xray、sing、sing-shadowsocks 标记。未签名 IPA 为 6,804,592 字节。这些检查验证旧 Go 运行依赖已移除，不能代替完整发行许可审核或真机联网验收。
 
 [前一版核心的构建任务](https://github.com/6664782-sys/nailu-ios/actions/runs/41119432628/job/124282059082) 已使用 Xcode 26.6 / iOS SDK 26.5 完成模拟器与未签名 iPhone 构建，但该产物仍包含旧核心，不能代表本分支已通过 iOS 验证。
 
 **尚未进行 iPhone 真机 VPN 测试、Apple 签名、TestFlight 或 App Store 提交。未签名 IPA 不能直接安装到 iPhone。** 模拟器启动不等于真实账户登录、注册或 VPN 流量通过验收。
 
-本分支已移除 Xray、sing 和 sing-shadowsocks 依赖，重新生成许可清单。仍须在构建成功后审核实际发行二进制及完整依赖声明。
+本分支已移除 Xray、sing 和 sing-shadowsocks 依赖，重新生成许可清单。已检查本次二进制内的 Go 模块信息；发行前仍须完成完整二进制及全部依赖的许可复核。
 
 
 ## 在 Mac 上构建
@@ -85,6 +87,7 @@ bash scripts/test-anytls-interop.sh
 - Mac 编译、iPhone 真机测试、签名归档、TestFlight 验收通过后，再提交 App Store。
 
 官方参考：[审核指南 5.4 VPN Apps](https://developer.apple.com/app-store/review/guidelines/#vpn-apps)、[Packet Tunnel Provider](https://developer.apple.com/documentation/networkextension/nepackettunnelprovider)、[隐私清单](https://developer.apple.com/documentation/bundleresources/privacy-manifest-files)。
+
 
 
 
