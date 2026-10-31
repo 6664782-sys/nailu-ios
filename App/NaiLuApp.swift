@@ -225,7 +225,7 @@ struct LicensesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("奈鹿 NaiLu · iOS 0.2.0 开发版").font(.headline)
-                Text("连接引擎：Xray-core；数据包桥接：hev-socks5-tunnel。")
+                Text("连接引擎：奈鹿 AnyTLS；数据包桥接：hev-socks5-tunnel。")
                 Text(notices).font(.caption.monospaced()).textSelection(.enabled)
             }.padding()
         }.navigationTitle("开源许可").task {
@@ -234,3 +234,4 @@ struct LicensesView: View {
         }
     }
 }
+
