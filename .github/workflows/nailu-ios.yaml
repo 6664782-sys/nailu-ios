@@ -32,6 +32,11 @@ jobs:
           test "$XCODE_MAJOR" -ge 26
           xcrun --sdk iphoneos --show-sdk-version
           command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Warm up iPhone simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for group in d["devices"].values() for v in group if v.get("isAvailable") and "iPhone" in v["name"]))')
+          echo "NAILU_SIM_DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          if ! xcrun simctl list devices | grep "$DEVICE" | grep -q Booted; then xcrun simctl boot "$DEVICE"; fi
       - name: Race tests and AnyTLS reference interoperability
         run: |
           (cd Engine && go test -race -timeout 90s ./...)
@@ -50,8 +55,7 @@ jobs:
           shasum -a 256 dist/*.ipa dist/*.zip > dist/SHA256SUMS.txt
       - name: Capture real simulator login screen
         run: |
-          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for group in d["devices"].values() for v in group if v.get("isAvailable") and "iPhone" in v["name"]))')
-          if ! xcrun simctl list devices | grep "$DEVICE" | grep -q Booted; then xcrun simctl boot "$DEVICE"; fi
+          DEVICE="$NAILU_SIM_DEVICE"
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl install "$DEVICE" .build/DerivedData/Build/Products/Debug-iphonesimulator/NaiLu.app
           xcrun simctl launch "$DEVICE" pro.nailu.ios
