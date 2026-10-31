@@ -8,12 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"errors"
-	xnet "github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/core"
-	"github.com/xtls/xray-core/features/outbound"
-	_ "github.com/xtls/xray-core/main/distro/all"
 	"io"
 	nailu "nailu/ios/engine/anytls"
+	"nailu/ios/engine/socks"
 	"net"
 	"net/http/httptest"
 	"strconv"
@@ -179,55 +176,85 @@ func TestNailuReferenceInterop(t *testing.T) {
 		t.Fatalf("session reuse failed: %d", sessions.Load())
 	}
 	u.Close()
-	configuration, e := core.LoadConfig("json", bytes.NewBufferString(`{"log":{"loglevel":"none"},"inbounds":[],"outbounds":[]}`))
+	proxyListener, e := net.Listen("tcp", "127.0.0.1:0")
 	if e != nil {
 		t.Fatal(e)
 	}
-	instance, e := core.New(configuration)
-	if e != nil {
-		t.Fatal(e)
-	}
-	defer instance.Close()
-	if e = instance.GetFeature(outbound.ManagerType()).(outbound.Manager).AddHandler(ctx, &nailu.Handler{Client: client}); e != nil {
-		t.Fatal(e)
-	}
-	if e = instance.Start(); e != nil {
-		t.Fatal(e)
-	}
+	bridge := socks.New(proxyListener, func(ctx context.Context, host string, port uint16) (io.ReadWriteCloser, error) {
+		return client.Dial(ctx, host, port)
+	}, func(ctx context.Context) (io.ReadWriteCloser, error) { return client.DialUDP(ctx) })
+	defer bridge.Close()
 	port, _ = strconv.Atoi(tcpPort)
-	tunnel, e := core.Dial(ctx, instance, xnet.TCPDestination(xnet.ParseAddress("127.0.0.1"), xnet.Port(port)))
-	if e != nil {
-		t.Fatal(e)
-	}
-	expected := []byte("Xray -> NaiLu AnyTLS -> reference server -> TCP echo")
-	if _, e = tunnel.Write(expected); e != nil {
-		t.Fatal(e)
-	}
+	tunnel, _, _ := openFixtureSOCKS(t, bridge.Addr().String(), 1, "127.0.0.1", uint16(port))
+	expected := bytes.Repeat([]byte("HEV SOCKS path -> NaiLu AnyTLS -> reference server -> TCP echo\n"), 1500)
+	sent := make(chan error, 1)
+	go func() { _, err := tunnel.Write(expected); sent <- err }()
 	actual := make([]byte, len(expected))
 	if _, e = io.ReadFull(tunnel, actual); e != nil {
 		t.Fatal(e)
 	}
 	if !bytes.Equal(expected, actual) {
-		t.Fatal("Xray TCP mismatch")
+		t.Fatal("SOCKS/AnyTLS TCP mismatch")
+	}
+	if e = <-sent; e != nil {
+		t.Fatal(e)
 	}
 	tunnel.Close()
-	packetTunnel, e := core.DialUDP(ctx, instance)
+	control, bound, boundPort := openFixtureSOCKS(t, bridge.Addr().String(), 3, "0.0.0.0", 0)
+	defer control.Close()
+	udpClient, e := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.ParseIP(bound), Port: int(boundPort)})
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer packetTunnel.Close()
-	expected = []byte("Xray UDP DNS-path fixture")
-	if _, e = packetTunnel.WriteTo(expected, udpEcho.LocalAddr()); e != nil {
+	defer udpClient.Close()
+	udpClient.SetDeadline(time.Now().Add(5 * time.Second))
+	port, _ = strconv.Atoi(udpPort)
+	address, _ := nailu.Address("127.0.0.1", uint16(port), false)
+	expected = bytes.Repeat([]byte{1, 2, 3, 4}, 300)
+	packet := append([]byte{0, 0, 0}, address...)
+	packet = append(packet, expected...)
+	if _, e = udpClient.Write(packet); e != nil {
 		t.Fatal(e)
 	}
-	received := make([]byte, 1024)
-	n, _, e := packetTunnel.ReadFrom(received)
+	received := make([]byte, 4096)
+	n, e := udpClient.Read(received)
 	if e != nil {
 		t.Fatal(e)
 	}
-	if !bytes.Equal(expected, received[:n]) {
-		t.Fatal("Xray UDP mismatch")
+	reader := bytes.NewReader(received[3:n])
+	responseHost, responsePort, e := nailu.ReadAddress(reader, false)
+	if e != nil || responseHost != "127.0.0.1" || responsePort != uint16(port) || !bytes.Equal(received[n-reader.Len():n], expected) {
+		t.Fatal("SOCKS/AnyTLS UDP mismatch")
 	}
 	t.Log("reference server: verified TLS + authentication + TCP + UOT v2 UDP + session reuse")
-	t.Log("Xray outbound adapter: verified TCP and UDP echo through reference server")
+	t.Log("standalone SOCKS bridge: verified TCP and UDP through AnyTLS reference server; no Xray runtime")
+}
+func openFixtureSOCKS(t *testing.T, address string, command byte, host string, port uint16) (net.Conn, string, uint16) {
+	t.Helper()
+	c, err := net.Dial("tcp", address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+	c.SetDeadline(time.Now().Add(5 * time.Second))
+	if _, err = c.Write([]byte{5, 1, 0}); err != nil {
+		t.Fatal(err)
+	}
+	var methods [2]byte
+	if _, err = io.ReadFull(c, methods[:]); err != nil || methods != [2]byte{5, 0} {
+		t.Fatal("SOCKS authentication mismatch", err)
+	}
+	encoded, _ := nailu.Address(host, port, false)
+	if _, err = c.Write(append([]byte{5, command, 0}, encoded...)); err != nil {
+		t.Fatal(err)
+	}
+	var reply [3]byte
+	if _, err = io.ReadFull(c, reply[:]); err != nil || reply != [3]byte{5, 0, 0} {
+		t.Fatalf("SOCKS command failed: %v %v", reply, err)
+	}
+	bound, boundPort, err := nailu.ReadAddress(c, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c, bound, boundPort
 }
