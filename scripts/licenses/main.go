@@ -31,7 +31,7 @@ func main() {
 	must(err)
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	var out strings.Builder
-	out.WriteString("NaiLu iOS — third-party license inventory\n\nXray-core is unmodified MPL-2.0 source: https://github.com/XTLS/Xray-core/tree/v1.260327.0\nHEV pinned source: https://github.com/heiher/hev-socks5-tunnel/tree/0166c4765e9e42eee7d18923026f88fda91bd9fa\n\n")
+	out.WriteString("NaiLu iOS — third-party license inventory\n\nHEV pinned source: https://github.com/heiher/hev-socks5-tunnel/tree/0166c4765e9e42eee7d18923026f88fda91bd9fa\n\n")
 	var missing []string
 	modules := map[string]module{}
 	for {
@@ -134,3 +134,4 @@ func must(err error) {
 		panic(err)
 	}
 }
+

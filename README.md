@@ -1,24 +1,24 @@
 # NaiLu native iOS client
 
-SwiftUI iPhone/iPad development client for NaiLu, with AnyTLS v2 over standard TLS, a Network Extension packet tunnel, email account flows and account/traffic screens.
+SwiftUI iPhone/iPad development client for NaiLu, supporting AnyTLS v2 over standard TLS, a Network Extension packet tunnel, email accounts and account/traffic screens.
 
 [中文说明、功能范围与真机验收项目](README.zh-CN.md)
 
-## Verified cloud build
+## Independent AnyTLS engine
 
-[The iOS build job passed](https://github.com/6664782-sys/nailu-ios/actions/runs/41119432628/job/124282059082) on 2026-10-31, using a standard macOS 26 runner, Xcode 26.6 and iOS SDK 26.5.
+This branch replaces Xray with an independently implemented, bounded loopback SOCKS5 bridge and the project's AnyTLS client. Runtime traffic passes through AnyTLS; the bridge does not directly resolve or connect to destination hosts. The app accepts only AnyTLS nodes.
 
-- Go race tests and independent AnyTLS reference-server TCP/UDP interoperability passed.
-- Four shared Swift tests passed.
-- The simulator app and unsigned iPhone archive built successfully.
-- The app was installed and launched in the simulator; the build includes a real login-screen screenshot.
+[Cloud build #6 passed](https://github.com/6664782-sys/nailu-ios/actions/runs/41163645570) on 2026-10-31 with Xcode 26.6 / iOS SDK 26.5. Go race tests, independent reference-server TCP/UDP interoperability, four shared Swift tests, simulator build, unsigned iPhone archive and actual simulator launch all passed. Local vet and 20 repeated SOCKS lifecycle test runs also passed.
 
-Artifacts contain an **unsigned development IPA**, a simulator app, a screenshot, SHA-256 checksums and build logs. The IPA cannot be installed directly on an iPhone without appropriate Apple signing and provisioning. Simulator launch does not verify real account registration, production node connectivity or device VPN operation. No TestFlight or App Store submission has been performed.
+Downloaded artifact checksums and both arm64 iPhone executables were verified. Go build metadata in the app and extension contains only `golang.org/x/mobile` and `nailu/ios/engine`; Xray, sing and sing-shadowsocks markers are absent. This verifies removal of the old Go runtime dependencies, not completion of the final distribution license review.
 
-## Release hold
+The [previous engine's build job](https://github.com/6664782-sys/nailu-ios/actions/runs/41119432628/job/124282059082) passed using Xcode 26.6 / iOS SDK 26.5. Those existing artifacts contain the previous engine and do not validate this branch.
 
-The project still requires signed physical-device testing, account deletion, final privacy and binary/license review. In particular, Xray's MPL-2.0 top-level license does not resolve the licensing of its GPL-3.0-or-later `sing` and `sing-shadowsocks` dependencies. Those dependencies are used by the engine, not just by the separate reference test server. Applicable permissions and compatibility must be resolved, or the dependencies replaced, before selecting a distribution plan. Public source and a successful development build do not establish App Store distribution readiness.
+## Development and release
 
-See [third-party notices](THIRD_PARTY_NOTICES.md) and the bundled license inventory. No production credentials, customer data or signing materials are included.
+Run `bash scripts/build-macos.sh` on a Mac with full Xcode, Go 1.27.1 and XcodeGen. The workflow uses a standard macOS 26 runner and produces an unsigned development IPA, simulator app, screenshot, checksums and logs. An unsigned IPA cannot be installed directly on an iPhone without appropriate Apple signing and Network Extension provisioning.
 
+Signed physical-device VPN and account testing, account deletion, privacy review and final binary/license review remain required before distribution. No TestFlight or App Store submission has occurred. Public source and a successful development build do not establish distribution readiness.
+
+See [third-party notices](THIRD_PARTY_NOTICES.md). No production credentials, customer data or signing materials are included.
 
